@@ -1,19 +1,37 @@
 # qnet-awesome
 
-A Claude Code plugin that bundles a multi-agent research pipeline and a code-explanation skill. Everything in this repo is Markdown with YAML frontmatter — the Claude Code harness loads it at session start. There is no build step.
+A **Claude Code plugin for software engineering** built on the harness engineering model — every component is a Markdown file with YAML frontmatter that the Claude Code harness loads at session start. No build step, no runtime, just structured prompting with strict division of labor.
 
-> Status: plugin-in-progress. `.claude-plugin/plugin.json` and `commands/` are not yet populated; agents and skills are usable today when this directory is added as a plugin source.
+## Install
+
+Add the marketplace and install the plugin from the GitHub repo:
+
+```shell
+/plugin marketplace add phuquocchamp/qnet-awesome
+/plugin install qnet-awesome@qnet-awesome
+```
+
+Or via the CLI:
+
+```bash
+claude plugin marketplace add phuquocchamp/qnet-awesome
+claude plugin install qnet-awesome@qnet-awesome
+```
 
 ## What's inside
 
-### Skills (`skills/`)
+### Skills
 
-| Skill | Purpose |
-| --- | --- |
-| [`deep-research`](skills/deep-research/SKILL.md) | Runs a thorough, source-heavy investigation. Orchestrates parallel researchers, drafts a report, then cites and audits it. Produces a dated deliverable folder with provenance. |
-| [`explain-code`](skills/explain-code/SKILL.md) | Explains code with an analogy, a Mermaid diagram, a step-by-step walkthrough, and a gotcha. Saves the explanation as a dated Markdown report. |
+Skills are invoked with a slash command inside Claude Code.
 
-### Agents (`agents/`)
+| Skill | Command | Purpose |
+| --- | --- | --- |
+| [`deep-research`](skills/deep-research/SKILL.md) | `/deep-research <topic>` | Multi-round source-heavy investigation. Spawns parallel researcher subagents, drafts a full report, adds inline citations, and produces a verified brief with provenance tracking. |
+| [`explain-code`](skills/explain-code/SKILL.md) | `/explain-code <file \| symbol>` | Explains code with an analogy, a Mermaid diagram, a step-by-step walkthrough, and a gotcha. Saves the explanation as a dated Markdown file. |
+
+### Agents
+
+Subagents used by the research pipeline. They do not invoke each other — only the `deep-research` skill orchestrates them.
 
 | Agent | Role |
 | --- | --- |
@@ -24,7 +42,7 @@ A Claude Code plugin that bundles a multi-agent research pipeline and a code-exp
 
 ## The research pipeline
 
-`deep-research` is the orchestrator. It spawns researchers in parallel, writes the draft itself (deliberately bypassing `writer` to keep evidence traceability tight), then hands off to `verifier` and `reviewer`.
+`deep-research` is the orchestrator. It fans out to parallel researchers, writes the draft itself (deliberately bypassing `writer` to keep evidence traceability tight), then hands off to `verifier` and `reviewer`.
 
 ```mermaid
 ---
@@ -48,10 +66,11 @@ All artifacts for a run live under a dated folder:
 └── no-NN-<descriptive-name>.md
 ```
 
-The zero-padded `no-NN-` prefix on deliverables encodes execution order.
+The `no-NN-` zero-padded prefix encodes execution order across researcher rounds and post-processing steps.
 
 ## Design principles
 
+- **Harness engineering model.** All behavior is defined in Markdown with YAML frontmatter. The Claude Code harness is the runtime — no external dependencies.
 - **URL or it didn't happen.** No source is cited without a direct, checkable URL.
 - **Preserve uncertainty.** Inferences are labeled as inferences; contradictions are surfaced, not smoothed.
 - **Strict division of labor.** Researchers gather, the lead drafts, the verifier cites, the reviewer audits. No agent does two jobs.
@@ -60,12 +79,15 @@ The zero-padded `no-NN-` prefix on deliverables encodes execution order.
 ## Layout
 
 ```
-.claude-plugin/      # plugin manifest (TBD)
+.claude-plugin/      # plugin manifest and marketplace catalog
 agents/              # subagent definitions
-commands/            # slash commands (TBD)
 skills/              # skill definitions
-CLAUDE.md            # guidance for Claude Code sessions in this repo
-plugins-design.excalidraw   # design sketch (gitignored)
+  deep-research/     # multi-agent research orchestrator
+  explain-code/      # code explanation with diagrams
+CLAUDE.md            # editing conventions and invariants
 ```
 
-See [`CLAUDE.md`](.claude/CLAUDE.md) for editing conventions and invariants the agents rely on.
+## Requirements
+
+- Claude Code CLI or desktop app
+- Claude Max or API subscription (the `deep-research` skill runs on Opus by default)
